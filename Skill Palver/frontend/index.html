@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intelligent Multi-Protocol DDoS Shield</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-main: #071120;
+            --bg-elev: #0f1e33;
+            --bg-card: #162842;
+            --bg-card-2: #1b3150;
+            --border: #2f4768;
+            --txt-main: #edf4ff;
+            --txt-soft: #b7c8de;
+            --txt-muted: #99acc6;
+            --accent: #46a6ff;
+            --ok: #2ad58f;
+            --warn: #ffb347;
+            --danger: #ff5d6c;
+        }
+
+        body {
+            min-height: 100vh;
+            color: var(--txt-main);
+            font-family: "Segoe UI", "Trebuchet MS", system-ui, -apple-system, sans-serif;
+            background:
+                radial-gradient(circle at 10% 10%, rgba(70, 166, 255, 0.2), transparent 30%),
+                radial-gradient(circle at 85% 5%, rgba(42, 213, 143, 0.12), transparent 28%),
+                linear-gradient(180deg, #081225 0%, #071120 100%);
+            letter-spacing: 0.1px;
+        }
+
+        .text-muted {
+            color: var(--txt-muted) !important;
+        }
+
+        .navbar {
+            background: linear-gradient(90deg, #112746 0%, #162d4e 100%);
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 8px 20px rgba(2, 10, 22, 0.45);
+        }
+
+        .navbar-brand {
+            color: #f5f9ff !important;
+            font-weight: 700;
+        }
+
+        .card {
+            background: linear-gradient(165deg, var(--bg-card) 0%, var(--bg-card-2) 100%);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            margin-bottom: 18px;
+            box-shadow: 0 10px 20px rgba(3, 14, 31, 0.35);
+        }
+
+        .card-header {
+            background: rgba(12, 25, 44, 0.45);
+            border-bottom: 1px solid var(--border);
+            font-weight: 700;
+            color: var(--txt-soft);
+            text-transform: uppercase;
+            font-size: 0.83rem;
+            letter-spacing: 0.4px;
+        }
+
+        .badge-severity {
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: 1px solid transparent;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .severity-normal { color: var(--ok); border-color: rgba(42, 213, 143, 0.4); }
+        .severity-low { color: #69b8ff; border-color: rgba(105, 184, 255, 0.4); }
+        .severity-moderate { color: var(--warn); border-color: rgba(255, 179, 71, 0.35); }
+        .severity-high { color: #ff8f61; border-color: rgba(255, 143, 97, 0.35); }
+
+        .severity-critical {
+            color: var(--danger);
+            border-color: rgba(255, 93, 108, 0.45);
+            background: rgba(255, 93, 108, 0.12);
+        }
+
+        .timeline-log {
+            max-height: 250px;
+            overflow-y: auto;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 0.84rem;
+        }
+
+        .timeline-log::-webkit-scrollbar,
+        .mini-list::-webkit-scrollbar {
+            width: 7px;
+        }
+
+        .timeline-log::-webkit-scrollbar-thumb,
+        .mini-list::-webkit-scrollbar-thumb {
+            background: #48617f;
+            border-radius: 999px;
+        }
+
+        .log-entry {
+            padding: 4px 8px;
+            border-bottom: 1px solid rgba(153, 172, 198, 0.18);
+            color: #dbe7f9;
+        }
+
+        .confidence-bar {
+            height: 9px;
+            border-radius: 999px;
+            background: #334a69;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            transition: width 0.45s ease;
+            background: linear-gradient(90deg, #4ea8ff 0%, #2de3a4 100%);
+        }
+
+        .protocol-card {
+            transition: transform 0.2s ease, box-shadow 0.25s ease;
+        }
+
+        .protocol-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 14px 20px rgba(4, 14, 30, 0.42);
+        }
+
+        .alert-pulse {
+            animation: pulse-danger 1.4s infinite;
+        }
+
+        @keyframes pulse-danger {
+            0% { box-shadow: 0 0 0 0 rgba(255, 93, 108, 0.48); }
+            70% { box-shadow: 0 0 0 12px rgba(255, 93, 108, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 93, 108, 0); }
+        }
+
+        .mini-list {
+            max-height: 96px;
+            overflow-y: auto;
+            font-size: 0.77rem;
+            color: #d6e5fa;
+            background: rgba(8, 17, 32, 0.62);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px;
+        }
+
+        .flow-step {
+            min-width: 132px;
+            text-align: center;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: var(--txt-soft);
+            background: rgba(13, 25, 44, 0.45);
+            border: 1px solid rgba(92, 120, 153, 0.42);
+            border-radius: 999px;
+            padding: 8px 10px;
+        }
+
+        .flow-step span {
+            font-size: 0.69rem;
+            color: #8fa3bf;
+        }
+
+        .flow-active {
+            color: #f8fcff;
+            border-color: rgba(70, 166, 255, 0.65);
+            background: linear-gradient(90deg, rgba(70, 166, 255, 0.28), rgba(42, 213, 143, 0.2));
+            box-shadow: 0 0 0 1px rgba(70, 166, 255, 0.2), 0 0 18px rgba(70, 166, 255, 0.2);
+        }
+
+        .flow-active span {
+            color: #f2f8ff;
+        }
+
+        .flow-pending {
+            opacity: 0.85;
+        }
+
+        .table {
+            color: #e8f0ff;
+            margin-bottom: 0;
+        }
+
+        .table-dark {
+            --bs-table-bg: transparent;
+            --bs-table-hover-bg: rgba(63, 97, 132, 0.28);
+            --bs-table-border-color: rgba(153, 172, 198, 0.2);
+        }
+
+        .form-select,
+        .btn,
+        .btn-outline-secondary {
+            border-radius: 8px;
+        }
+
+        .form-select {
+            background-color: rgba(9, 19, 34, 0.9) !important;
+            border-color: #4a6383 !important;
+            color: #edf4ff !important;
+        }
+
+        .btn-danger {
+            background: linear-gradient(90deg, #e11d48 0%, #f43f5e 100%);
+            border: none;
+            font-weight: 600;
+        }
+
+        .btn-outline-secondary {
+            border-color: #6281a8;
+            color: #c4d5eb;
+        }
+
+        .btn-outline-secondary:hover {
+            background: rgba(98, 129, 168, 0.18);
+            color: #f3f8ff;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-dark sticky-top">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">Active DDoS Defense Framework <span class="text-muted small ms-2">V3</span></span>
+            <div class="d-flex align-items-center">
+                <span class="text-muted me-2">Global System Status:</span>
+                <span id="global-severity" class="badge-severity severity-normal">NORMAL</span>
+            </div>
+        </div>
+    </nav>
+
+    <div id="attack-banner" class="container-fluid py-2 d-none"
+        style="background: rgba(255, 93, 108, 0.18); border-bottom: 1px solid rgba(255, 93, 108, 0.7);">
+        <div class="text-center">
+            <span class="fw-bold text-danger">Attack Detected:</span>
+            <span id="detected-type" class="fw-bold me-3">None</span>
+            <span class="text-muted me-1">Confidence:</span>
+            <span id="detected-confidence" class="fw-bold me-3">0%</span>
+            <span class="text-muted me-1">Recommended Action:</span>
+            <span id="recommended-action" class="fw-bold text-warning">Monitor Traffic</span>
+        </div>
+    </div>
+
+    <div class="container-fluid mt-3">
+        <div class="card shadow-sm mb-0">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center small fw-bold flex-wrap gap-2">
+                    <div id="step-detection" class="flow-step flow-pending">Detection <span class="ms-2">PENDING</span></div>
+                    <div id="step-classification" class="flow-step flow-pending">Classification <span class="ms-2">PENDING</span></div>
+                    <div id="step-intelligence" class="flow-step flow-pending">Source ID <span class="ms-2">PENDING</span></div>
+                    <div id="step-mitigation" class="flow-step flow-pending">Mitigation <span class="ms-2">PENDING</span></div>
+                    <div id="step-stabilization" class="flow-step flow-pending">Stabilization <span class="ms-2">PENDING</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-lg-3">
+                <div class="card shadow-sm">
+                    <div class="card-header">Traffic Intelligence</div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="text-muted small d-block mb-1">Confidence Score</label>
+                            <div class="d-flex align-items-center">
+                                <div class="confidence-bar flex-grow-1 me-2">
+                                    <div id="confidence-fill" class="confidence-fill" style="width: 0%"></div>
+                                </div>
+                                <span id="confidence-text" class="small fw-bold">0%</span>
+                            </div>
+                        </div>
+                        <div class="row text-center mb-2">
+                            <div class="col-6 border-end border-secondary">
+                                <label class="text-muted small d-block">Entropy</label>
+                                <span id="entropy-value" class="h5 fw-bold">1.0</span>
+                            </div>
+                            <div class="col-6">
+                                <label class="text-muted small d-block">Dropped</label>
+                                <span id="dropped-value" class="h5 fw-bold text-danger">0</span>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <label class="text-muted small d-block">Detected Attack Type</label>
+                            <span id="attack-type-value" class="fw-bold text-warning">None</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-header">Attack Simulation</div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">Select Attack Type</label>
+                            <select id="attack-type-select" class="form-select border-secondary bg-dark text-white form-select-sm">
+                                <option value="Mixed">Mixed Attack</option>
+                                <option value="SYN Flood">SYN Flood</option>
+                                <option value="UDP Flood">UDP Flood</option>
+                                <option value="HTTP Flood">HTTP Flood</option>
+                                <option value="Botnet">Botnet-like Behavior</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-danger w-100 btn-sm mb-2" onclick="startAttack()">Launch Simulation</button>
+                        <button class="btn btn-outline-secondary w-100 btn-sm" onclick="stopAttack()">Stop Attack</button>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-header">Active Defense Actions</div>
+                    <div class="card-body p-0">
+                        <div class="p-3 border-bottom border-secondary small">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Firewall Trigger</span>
+                                <span id="fw-status" class="badge bg-secondary">Idle</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Dropped Packets</span>
+                                <span id="dropped-total" class="fw-bold text-danger">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Blocked IPs</span>
+                                <span id="blocked-count" class="fw-bold">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Rate-Limited Sources</span>
+                                <span id="rate-limited-count" class="fw-bold">0</span>
+                            </div>
+                        </div>
+                        <div id="action-list" class="timeline-log p-2" style="max-height: 150px; font-size: 0.75rem;"></div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-header">Automatic Mitigation Module</div>
+                    <div class="card-body">
+                        <div class="small mb-1 text-muted">Mitigation Status</div>
+                        <div id="mitigation-status" class="fw-bold mb-2">Monitoring</div>
+                        <div class="small mb-1 text-muted">Last Action Taken</div>
+                        <div id="mitigation-action" class="mb-2">None</div>
+                        <div class="small mb-1 text-muted">Blocked IP List</div>
+                        <div id="blocked-ip-list" class="mini-list">No blocked IPs</div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-header">Mitigation Effectiveness</div>
+                    <div class="card-body p-2">
+                        <div class="row text-center g-2">
+                            <div class="col-4">
+                                <div class="bg-dark p-2 rounded">
+                                    <label class="d-block small text-muted">Normal</label>
+                                    <span id="eff-normal" class="fw-bold">0</span>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="bg-dark p-2 rounded">
+                                    <label class="d-block small text-muted">Attack</label>
+                                    <span id="eff-attack" class="fw-bold text-danger">0</span>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="bg-dark p-2 rounded">
+                                    <label class="d-block small text-muted">Stabilized</label>
+                                    <span id="eff-stabilized" class="fw-bold text-success">N/A</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-9">
+                <div class="card shadow-sm">
+                    <div class="card-header">Real-time Traffic Metrics (PPS)</div>
+                    <div class="card-body">
+                        <canvas id="trafficChart" style="max-height: 260px;"></canvas>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-header">Before vs During vs After Mitigation</div>
+                    <div class="card-body">
+                        <canvas id="effectivenessChart" style="max-height: 220px;"></canvas>
+                    </div>
+                </div>
+
+                <div class="row" id="protocol-status-grid"></div>
+
+                <div class="row">
+                    <div class="col-lg-7">
+                        <div class="card shadow-sm">
+                            <div class="card-header">System Response Timeline</div>
+                            <div class="card-body p-0">
+                                <div id="timeline-log" class="timeline-log bg-dark bg-opacity-50"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        <div class="card shadow-sm">
+                            <div class="card-header">Source Intelligence</div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-dark table-hover table-sm mb-0 small">
+                                        <thead>
+                                            <tr>
+                                                <th>IP Source</th>
+                                                <th>Country</th>
+                                                <th>Risk</th>
+                                                <th>Threat Confidence</th>
+                                                <th>Bot vs Human</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="attacker-table"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="static/js/app.js"></script>
+</body>
+
+</html>
